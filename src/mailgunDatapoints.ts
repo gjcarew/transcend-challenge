@@ -42,20 +42,37 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         // Define an array for mailing lists that include the target user
         const addressWithUser: string[] = [];
 
-        const allMailingLists = await mailgunClient({
-            method: 'GET',
-            url: '/v3/lists/pages',
-            params: {
-                limit: 100
-            }
-        });
-        // TODO: implement pagination
-        // Extract the mailing list addresses if there is more than one member
-        allMailingLists.data["items"].forEach((item) => {
-            if (item["members_count"] > 0) {
-                addressList.push(item["address"])
-            }
-        });
+        // Set the starting URL for mailing lists
+        const url = '/v3/lists/pages';
+
+        // Function to get all mailing lists for the organization
+        async function getLists (url) { 
+            const allMailingLists = await mailgunClient({
+                method: 'GET',
+                url: url,
+                params: {
+                    limit: 100
+                }
+            });
+
+            // Extract the mailing list addresses if there is more than one member
+            allMailingLists.data["items"].forEach((item) => {
+                if (item["members_count"] > 0) {
+                    addressList.push(item["address"])
+                }
+            });
+
+            // For pagination - recursively calls the getLists function 
+            const num_items = allMailingLists.data["items"].length
+            if (num_items === 100) {
+                const next_url = allMailingLists.data["paging"]["next"];
+                // Trim the base url from the full url to pass to getLists function
+                const trimmed_next_url =  'v3/lists/pages?'.concat(next_url.substring(49, next_url.length - 10));
+                getLists(trimmed_next_url);
+            };
+        };
+
+        await getLists(url);
 
         // Iterate through each address to find if the target is a member
 
