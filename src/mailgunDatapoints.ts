@@ -66,7 +66,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
             const num_items = allMailingLists.data["items"].length
             if (num_items === 100) {
                 const next_url = allMailingLists.data["paging"]["next"];
-                // Trim the base url from the full url to pass to getLists function
+                // Trim the base url from the full url for the next page to pass to getLists function
                 const trimmed_next_url =  'v3/lists/pages?'.concat(next_url.substring(49, next_url.length - 10));
                 getLists(trimmed_next_url);
             };
@@ -74,51 +74,27 @@ export const mailgunDataPoints: IntegrationDatapoints = {
 
         await getLists(url);
 
-        // Iterate through each address to find if the target is a member
+        // Call each address to find if the target is a member
 
         for (let i = 0; i < addressList.length; i++) {
             const address = addressList[i]
             const response = await mailgunClient({
                 method: 'GET',
-                url: `/v3/lists/${address}/members/pages`,
-            });
-            
-            /** There's a lot of code smell here.
-             * 
-             * Each fetch here will most likely take at least a second, so if we're looping through
-             * hundreds of mailing list addresses, this would take minutes to complete. Unfortunately 
-             * I haven't found a better way to do this via Mailgun's API.
-             * 
-             * Nested loops are also generally slow, especially if our mailing lists contain hundreds of users.
-             * 
-             * A better solution would be to:
-             * 
-             * 1. Increase the status code that will throw an error (so 404 statuses don't throw errors)
-             * by adding 
-             * validateStatus: function (status) {
-                return status <= 404
-               }
-             * to the request config.
-             * 2. Change the URL in the config to `/v3/lists/${address}/members/${TEST_DATA.identifier}`
-             * 3. Add a conditional statement to push the address of any request that returns status 200
-             * 
-             * ex: 
-             * if (response.status === 200) {
-             *      addressWithUser.push(address)}
-             * 
-             * This way they're looking for the member on the server side, which should be faster
-             * than doing it client side. This method is not available with the mock data
-             */
-            response.data["items"].forEach((item) => {
-                if (item["address"] === TEST_DATA.identifier) {
-                    addressWithUser.push(address)
+                url: `/v3/lists/${address}/members/${TEST_DATA.identifier}`,
+                // I don't want to throw an error for a 404
+                validateStatus: function (status) {
+                    return status <= 404;
                 }
             });
-            
+
+            // This method allows the lookup to take place server-side.
+            // This should be faster than requesting all members and looking through them.
+            // It also prevents us from needing pagination for this section.
+            if (response.status === 200) {
+                addressWithUser.push(address)
+            }
         };
 
-        // Instructions said to return a list.
-        // In order to run correctly, I needed to wrap it in a hash/dictionary.
         const return_value = {
             data: addressWithUser
         };
@@ -128,8 +104,6 @@ export const mailgunDataPoints: IntegrationDatapoints = {
       } catch (error) {
         throw(error);
       }
-      
-    // throw new Error('Access not implemented!');
   },
   /**
    * Remove the user from all mailing lists.
