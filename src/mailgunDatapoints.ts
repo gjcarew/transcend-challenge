@@ -46,7 +46,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         const url = '/v3/lists/pages';
 
         // Function to get all mailing lists for the organization
-        async function getLists (url) { 
+        const getLists = async (url) => {
             const allMailingLists = await mailgunClient({
                 method: 'GET',
                 url: url,
@@ -55,7 +55,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 }
             });
 
-            // Extract the mailing list addresses if there is more than one member
+            // Extract the mailing list addresses if a list has members
             allMailingLists.data["items"].forEach((item) => {
                 if (item["members_count"] > 0) {
                     addressList.push(item["address"])
@@ -83,13 +83,20 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 url: `/v3/lists/${address}/members/${TEST_DATA.identifier}`,
                 // I don't want to throw an error for a 404
                 validateStatus: function (status) {
-                    return status <= 404;
+                    return status === 404 || status === 200;
                 }
             });
+            /**
+             * This method allows the lookup to take place server-side.
+             * This should be faster than requesting all members and looping through to find the target member.
+             * It also prevents us from needing pagination for this section.
+             * 
+             * I don't like how many calls need to be made here - it works with the mocked data
+             * but there is a good chance this would run into a rate limit errors in production. 
+             * Those errors could be addressed with exponential backoff using a package like axios-retry
+             *  
+             */
 
-            // This method allows the lookup to take place server-side.
-            // This should be faster than requesting all members and looking through them.
-            // It also prevents us from needing pagination for this section.
             if (response.status === 200) {
                 addressWithUser.push(address)
             }
