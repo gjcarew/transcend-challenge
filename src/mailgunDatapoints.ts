@@ -6,6 +6,7 @@ import got from 'got';
 // types
 import { AccessResponse, IntegrationDatapoints, SeedInput } from './types';
 import { TEST_DATA } from './constants';
+import { resolve } from 'path';
 
 // The API key
 export const MAILGUN_API_KEY = 'FILL IN FROM ACCOUNT';
@@ -76,9 +77,16 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                     }
                 });
             });
-        }
+        };
 
-        console.log(addressWithUser)
+        // Instructions said to return a list.
+        // In order to run correctly, I needed to wrap it in a hash/dictionary.
+        const return_value = {
+            data: addressWithUser
+        };
+
+        return return_value;
+        
       } catch (error) {
         console.error(error);
       }
