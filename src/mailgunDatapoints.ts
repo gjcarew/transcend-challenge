@@ -5,6 +5,7 @@ import got from 'got';
 
 // types
 import { AccessResponse, IntegrationDatapoints, SeedInput } from './types';
+import { TEST_DATA } from './constants';
 
 // The API key
 export const MAILGUN_API_KEY = 'FILL IN FROM ACCOUNT';
@@ -61,17 +62,23 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         });
 
         // Iterate through each address to find if the target is a member
-        // addressList.forEach(async (address) => {
-        //     await mailgunInstance({
-        //         method: 'GET',
-        //         url: '/v3/lists/pages',
-        //         params: {
-        //             limit: 100
-        //           }
-        //     });
-        // });
-        console.log(addressList);
-        
+
+        for (let i = 0; i < addressList.length; i++) {
+            const address = addressList[i]
+            await mailgunInstance({
+                method: 'GET',
+                url: `/v3/lists/${address}/members/pages`,
+            }).then((response) => {
+                // Check whether this is the target user
+                response.data["items"].forEach((item) => {
+                    if (item["address"] === TEST_DATA.identifier) {
+                        addressWithUser.push(addressList[i])
+                    }
+                });
+            });
+        }
+
+        console.log(addressWithUser)
       } catch (error) {
         console.error(error);
       }
