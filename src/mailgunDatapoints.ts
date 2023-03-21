@@ -14,7 +14,7 @@ export const MAILGUN_API_KEY = 'FILL IN FROM ACCOUNT';
 // The API key should not be hard-coded here, but rather taken from an environment variable
  
 // The base instance to build API calls
-export const mailgunInstance = axios.create({
+const mailgunClient = axios.create({
     baseURL: 'https://api.mailgun.net/',
     timeout: 1000,
     auth: {
@@ -49,34 +49,33 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         // Define an array for mailing lists that include the target user
         const addressWithUser: string[] = [];
 
-        await mailgunInstance({
+        const response = await mailgunClient({
             method: 'GET',
             url: '/v3/lists/pages',
             params: {
                 limit: 100
-              }
-        }).then((response) => {
+            }
+        });
             // Extract the mailing list addresses  
-            response.data["items"].forEach((item) => {
-                addressList.push(item["address"])
-            });
+        response.data["items"].forEach((item) => {
+            addressList.push(item["address"])
         });
 
         // Iterate through each address to find if the target is a member
 
         for (let i = 0; i < addressList.length; i++) {
             const address = addressList[i]
-            await mailgunInstance({
+            const response = await mailgunClient({
                 method: 'GET',
                 url: `/v3/lists/${address}/members/pages`,
-            }).then((response) => {
-                // Check whether this is the target user
-                response.data["items"].forEach((item) => {
-                    if (item["address"] === TEST_DATA.identifier) {
-                        addressWithUser.push(addressList[i])
-                    }
-                });
             });
+            
+            response.data["items"].forEach((item) => {
+                if (item["address"] === TEST_DATA.identifier) {
+                    addressWithUser.push(addressList[i])
+                }
+            });
+            
         };
 
         // Instructions said to return a list.
@@ -88,7 +87,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         return return_value;
 
       } catch (error) {
-        console.error(error);
+        throw(error);
       }
       
     // throw new Error('Access not implemented!');
