@@ -34,13 +34,6 @@ export const mailgunDataPoints: IntegrationDatapoints = {
    * Get all mailing lists that the user belongs to
    */
 
-  /**
-   * TODO: 
-   * Get the lists JSON from Mailgun API
-   * Iterate through the json to find the member
-   * Add that email list address to the list of email lists
-   * 
-   */
   access: async (identifier: string): Promise<AccessResponse> => {
     try {
         // Define an array for all mailing list addresses for this company
@@ -49,16 +42,19 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         // Define an array for mailing lists that include the target user
         const addressWithUser: string[] = [];
 
-        const response = await mailgunClient({
+        const allMailingLists = await mailgunClient({
             method: 'GET',
             url: '/v3/lists/pages',
             params: {
                 limit: 100
             }
         });
-            // Extract the mailing list addresses  
-        response.data["items"].forEach((item) => {
-            addressList.push(item["address"])
+        // TODO: implement pagination
+        // Extract the mailing list addresses if there is more than one member
+        allMailingLists.data["items"].forEach((item) => {
+            if (item["members_count"] > 0) {
+                addressList.push(item["address"])
+            }
         });
 
         // Iterate through each address to find if the target is a member
@@ -70,9 +66,35 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 url: `/v3/lists/${address}/members/pages`,
             });
             
+            /** There's a lot of code smell here.
+             * 
+             * Each fetch here will most likely take at least a second, so if we're looping through
+             * hundreds of mailing list addresses, this would take minutes to complete. Unfortunately 
+             * I haven't found a better way to do this via Mailgun's API.
+             * 
+             * Nested loops are also generally slow, especially if our mailing lists contain hundreds of users.
+             * 
+             * A better solution would be to:
+             * 
+             * 1. Increase the status code that will throw an error (so 404 statuses don't throw errors)
+             * by adding 
+             * validateStatus: function (status) {
+                return status <= 404
+               }
+             * to the request config.
+             * 2. Change the URL in the config to `/v3/lists/${address}/members/${TEST_DATA.identifier}`
+             * 3. Add a conditional statement to push the address of any request that returns status 200
+             * 
+             * ex: 
+             * if (response.status === 200) {
+             *      addressWithUser.push(address)}
+             * 
+             * This way they're looking for the member on the server side, which should be faster
+             * than doing it client side. This method is not available with the mock data
+             */
             response.data["items"].forEach((item) => {
                 if (item["address"] === TEST_DATA.identifier) {
-                    addressWithUser.push(addressList[i])
+                    addressWithUser.push(address)
                 }
             });
             
