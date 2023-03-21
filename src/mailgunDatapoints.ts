@@ -41,14 +41,37 @@ export const mailgunDataPoints: IntegrationDatapoints = {
    */
   access: async (identifier: string): Promise<AccessResponse> => {
     try {
-        const all_lists: AccessResponse = await mailgunInstance({
+        // Define an array for all mailing list addresses for this company
+        const addressList: string[] = [];
+        
+        // Define an array for mailing lists that include the user
+        const addressWithUser: string[] = [];
+
+        await mailgunInstance({
             method: 'GET',
             url: '/v3/lists/pages',
             params: {
                 limit: 100
               }
-        })
-        return all_lists
+        }).then((response) => {
+            // Extract the mailing list addresses
+            response.data["items"].forEach((item) => {
+                addressList.push(item["address"])
+            });
+        });
+
+        // Iterate through each address to find if the target is a member
+        // addressList.forEach(async (address) => {
+        //     await mailgunInstance({
+        //         method: 'GET',
+        //         url: '/v3/lists/pages',
+        //         params: {
+        //             limit: 100
+        //           }
+        //     });
+        // });
+        console.log(addressList);
+        
       } catch (error) {
         console.error(error);
       }
