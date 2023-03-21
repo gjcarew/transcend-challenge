@@ -46,7 +46,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         // Define an array for all mailing list addresses for this company
         const addressList: string[] = [];
         
-        // Define an array for mailing lists that include the user
+        // Define an array for mailing lists that include the target user
         const addressWithUser: string[] = [];
 
         await mailgunInstance({
@@ -56,7 +56,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 limit: 100
               }
         }).then((response) => {
-            // Extract the mailing list addresses
+            // Extract the mailing list addresses  
             response.data["items"].forEach((item) => {
                 addressList.push(item["address"])
             });
@@ -86,7 +86,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         };
 
         return return_value;
-        
+
       } catch (error) {
         console.error(error);
       }
