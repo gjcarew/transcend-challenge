@@ -83,7 +83,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 url: `/v3/lists/${address}/members/${TEST_DATA.identifier}`,
                 // I don't want to throw an error for a 404
                 validateStatus: function (status) {
-                    return status <= 404;
+                    return status === 404 || status === 200;
                 }
             });
 
