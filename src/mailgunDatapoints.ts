@@ -40,7 +40,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
         const addressList: string[] = [];
         
         // Define an array for mailing lists that include the target user
-        const addressWithUser: string[] = [];
+        const addressesWithUser: string[] = [];
 
         // Set the starting URL for mailing lists
         const url = '/v3/lists/pages';
@@ -80,8 +80,8 @@ export const mailgunDataPoints: IntegrationDatapoints = {
             const address = addressList[i]
             const response = await mailgunClient({
                 method: 'GET',
-                url: `/v3/lists/${address}/members/${TEST_DATA.identifier}`,
-                // I don't want to throw an error for a 404
+                url: `/v3/lists/${address}/members/${identifier}`,
+                // I want to continue the execution of this function with a 404 response
                 validateStatus: function (status) {
                     return status === 404 || status === 200;
                 }
@@ -94,23 +94,25 @@ export const mailgunDataPoints: IntegrationDatapoints = {
              * I don't like how many calls need to be made here - it works with the mocked data
              * but there is a good chance this would run into a rate limit errors in production. 
              * Those errors could be addressed with exponential backoff using a package like axios-retry
-             *  
              */
 
             if (response.status === 200) {
-                addressWithUser.push(address)
+                addressesWithUser.push(address)
             }
         };
 
         const return_value = {
-            data: addressWithUser
+            data: addressesWithUser,
+            contextDict: {
+                mailingLists: addressesWithUser
+            }
         };
 
         return return_value;
 
-      } catch (error) {
-        throw(error);
-      }
+    } catch (error) {
+    throw(error);
+    }
   },
   /**
    * Remove the user from all mailing lists.
@@ -118,6 +120,17 @@ export const mailgunDataPoints: IntegrationDatapoints = {
    * fetch the context data it might need.
    */
   erasure: async (identifier: string, contextDict?: object): Promise<void> => {
-    throw new Error('Erasure not implemented!');
+    try {
+        const mailingLists = contextDict["mailingLists"]
+        for (let i = 0; i < mailingLists.length; i++) {
+            const address = mailingLists[i]
+            await mailgunClient({
+                method: 'DELETE',
+                url: `/v3/lists/${address}/members/${identifier}`,
+            });
+        }; 
+    } catch (error) {
+    throw (error);
+    }
   },
 };
