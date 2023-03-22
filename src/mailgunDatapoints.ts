@@ -28,7 +28,18 @@ export const mailgunDataPoints: IntegrationDatapoints = {
    * Create mailing lists and Seed user(s) onto them
    */
   seed: async (seedInput: SeedInput): Promise<void> => {
-    throw new Error('Seeding not implemented!');
+    try {
+        await mailgunClient({
+            method: 'POST',
+            url: `/v3/lists/${seedInput.mailingList}/members`,
+            params: {
+                address: seedInput.identifier,
+                upsert: "yes"
+            }
+        });
+    } catch (error) {
+        throw(error);
+    }
   },
   /**
    * Get all mailing lists that the user belongs to
