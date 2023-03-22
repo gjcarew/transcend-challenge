@@ -38,6 +38,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 }
             });
         } catch (error) {
+            // Extra information about potential errors to help with debugging
             const seedError = {
                 location: 'mailgunDataPoints/seed',
                 time: new Date().toLocaleString(),
