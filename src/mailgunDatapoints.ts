@@ -59,7 +59,7 @@ export const mailgunDataPoints: IntegrationDatapoints = {
             
             //Get all mailing lists for the organization
             const addressList = await getLists(url);
-            console.log(addressList)
+
             // Create an array of promises
             const requests = addressList.map( async( address ) => {
                 const response = await mailgunClient({
@@ -161,5 +161,6 @@ async function getLists (url: string): Promise<string[]> {
         addressList.concat(await getLists(trimmed_next_url));
     };
 
+    // Filter out undefined from map function
     return addressList.filter(n => n);
 };
