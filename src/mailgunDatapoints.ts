@@ -145,8 +145,6 @@ async function getLists (url: string): Promise<string[]> {
         }
     });
 
-    // const addressList: string[] = [];
-
     // Extract the mailing list addresses if a list has members
     const addressList: string[] = allMailingLists.data["items"].map((item) => {
         if (item["members_count"] > 0) {
