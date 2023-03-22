@@ -85,9 +85,10 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 }
             });
 
+            // Resolve the array of promises
             const results = await Promise.all( requests )
 
-            // Returns an array of the promise values that did not resolve to null
+            // Filter out promise values that resolved to null
             const addressesWithUser: (string | undefined)[] = results.filter(n => n);
 
             return {
