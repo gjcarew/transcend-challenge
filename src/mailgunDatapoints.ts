@@ -24,47 +24,44 @@ const mailgunClient = axios.create({
   });
 
 export const mailgunDataPoints: IntegrationDatapoints = {
-  /**
-   * Create mailing lists and Seed user(s) onto them
-   */
-  seed: async (seedInput: SeedInput): Promise<void> => {
-    try {
-        await mailgunClient({
-            method: 'POST',
-            url: `/v3/lists/${seedInput.mailingList}/members`,
-            params: {
-                address: seedInput.identifier,
-                upsert: "yes"
+    /**
+     * Create mailing lists and Seed user(s) onto them
+     */
+    seed: async (seedInput: SeedInput): Promise<void> => {
+        try {
+            await mailgunClient({
+                method: 'POST',
+                url: `/v3/lists/${seedInput.mailingList}/members`,
+                params: {
+                    address: seedInput.identifier,
+                    upsert: "yes"
+                }
+            });
+        } catch (error) {
+            const seedError = {
+                location: 'mailgunDataPoints/seed',
+                time: new Date().toLocaleString(),
+                cause: 'Please check seedInput'
             }
-        });
-    } catch (error) {
-        // Expand on log error - where it happened, possible causes, time 
-        console.error('Error with seedInput')
-        throw (error);
-    }
-  },
-  /**
-   * Get all mailing lists that the user belongs to
-   */
 
-  access: async (identifier: string): Promise<AccessResponse> => {
-      try {
-          // Define an array for all mailing list addresses for this company
-          
-          // Define an array for mailing lists that include the target user
-          const addressesWithUser: string[] = [];
-          
-          // Set the starting URL for mailing lists
-          const url = '/v3/lists/pages';
-          
-          // Function to get all mailing lists for the organization
-          
-          const addressList = await getLists(url);
-          
-          // Call each address to find if the target is a member
-          
-          for (let i = 0; i < addressList.length; i++) {
-                const address = addressList[i]
+            console.error(seedError)
+            throw (error)
+        }
+    },
+    /**
+     * Get all mailing lists that the user belongs to
+     */
+
+    access: async (identifier: string): Promise<AccessResponse> => {
+        try {            
+            // Set the starting URL for mailing lists
+            const url = '/v3/lists/pages';
+            
+            //Get all mailing lists for the organization
+            const addressList = await getLists(url);
+            console.log(addressList)
+            // Create an array of promises
+            const requests = addressList.map( async( address ) => {
                 const response = await mailgunClient({
                     method: 'GET',
                     url: `/v3/lists/${address}/members/${identifier}`,
@@ -84,9 +81,14 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                 */
                 
                 if (response.status === 200) {
-                    addressesWithUser.push(address)
+                    return address
                 }
-            };
+            });
+
+            const results = await Promise.all( requests )
+
+            // Returns an array of the promise values that did not resolve to null
+            const addressesWithUser: (string | undefined)[] = results.filter(n => n);
 
             return {
                 data: addressesWithUser,
@@ -94,33 +96,46 @@ export const mailgunDataPoints: IntegrationDatapoints = {
                     mailingLists: addressesWithUser
                 }
             };
-            } catch (error) {
-                // More error logging (see seed)
-                throw(error);
+        } catch (error) {
+            const accessError = {
+                location: 'mailgunDataPoints/access',
+                time: new Date().toLocaleString(),
+                cause: 'Please check identifier'
             }
-        },
-        /**
-         * Remove the user from all mailing lists.
-         * NOTE: Erasure runs an Access (access()) before it to
-         * fetch the context data it might need.
-        */
-        erasure: async (identifier: string, contextDict?: object): Promise<void> => {
-           try {
-               const mailingLists = contextDict["mailingLists"]
-               for (let i = 0; i < mailingLists.length; i++) {
-                   const address = mailingLists[i]
-                   await mailgunClient({
-                       method: 'DELETE',
-                       url: `/v3/lists/${address}/members/${identifier}`,
-                    });
-                }; 
-            } catch (error) {
-                // More error logging (see seed)
-                throw (error);
+
+            console.error(accessError);
+            throw (error);
+        }
+    },
+    /**
+     * Remove the user from all mailing lists.
+     * NOTE: Erasure runs an Access (access()) before it to
+     * fetch the context data it might need.
+    */
+    erasure: async (identifier: string, contextDict?: object): Promise<void> => {
+        try {
+            const mailingLists = contextDict["mailingLists"]
+            for (let i = 0; i < mailingLists.length; i++) {
+                const address = mailingLists[i]
+                await mailgunClient({
+                    method: 'DELETE',
+                    url: `/v3/lists/${address}/members/${identifier}`,
+                });
+            }; 
+        } catch (error) {
+            const erasureError = {
+                location: 'mailgunDataPoints/erasure',
+                time: new Date().toLocaleString(),
+                cause: 'Make sure access is running successfully'
             }
-        },
+
+            console.error(erasureError);
+            throw (error);
+        }
+    },
     };
-    
+   
+// Function to get all mailing lists for the organization
 async function getLists (url: string): Promise<string[]> {
     const allMailingLists = await mailgunClient({
         method: 'GET',
@@ -130,15 +145,15 @@ async function getLists (url: string): Promise<string[]> {
         }
     });
 
-    const addressList: string[] = [];
+    // const addressList: string[] = [];
 
     // Extract the mailing list addresses if a list has members
-    allMailingLists.data["items"].forEach((item) => {
+    const addressList: string[] = allMailingLists.data["items"].map((item) => {
         if (item["members_count"] > 0) {
-            addressList.push(item["address"])
+            return item["address"]
         }
     });
-    
+
     // For pagination - recursively calls the getLists function 
     const num_items = allMailingLists.data["items"].length
     if (num_items === 100) {
@@ -148,5 +163,5 @@ async function getLists (url: string): Promise<string[]> {
         addressList.concat(await getLists(trimmed_next_url));
     };
 
-    return addressList;
+    return addressList.filter(n => n);
 };
